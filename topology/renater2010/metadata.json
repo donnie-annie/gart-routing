@@ -1,0 +1,20 @@
+{
+  "benchmark_role": "medium real-world topology",
+  "bundled_traffic_matrix": {
+    "model": "deterministic gravity fixture",
+    "note": "Deterministic runnable traffic fixture.",
+    "seed": 3
+  },
+  "converted_link_reference": "https://github.com/ngvozdiev/tm-gen/blob/4c2fd049450b98e8993d8a336be799df3df3769f/data/topologies/Renater2010.graph",
+  "directed_links": 112,
+  "expected_counts": {
+    "directed_links": 112,
+    "nodes": 43
+  },
+  "name": "renater2010",
+  "nodes": 43,
+  "physical_links": 56,
+  "topology_source": "https://github.com/sk2/topologyzoo/blob/e278b1bdaafea5dac33883bf9c97401db4cd7347/sources/Renater2010.graphml",
+  "traffic_matrix_entries": 1849,
+  "traffic_matrix_source": "deterministic gravity fixture"
+}

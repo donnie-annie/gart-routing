@@ -1,0 +1,24 @@
+{
+  "benchmark_role": "large synthetic topology",
+  "bundled_traffic_matrix": {
+    "model": "deterministic gravity fixture",
+    "note": "Deterministic runnable traffic fixture.",
+    "seed": 4
+  },
+  "directed_links": 1338,
+  "expected_counts": {
+    "average_out_degree": 4.46,
+    "directed_links": 1338,
+    "nodes": 300
+  },
+  "generator": {
+    "family": "degree-preferential connected generator",
+    "note": "Fixed instance with stable size and average out-degree.",
+    "seed": 1
+  },
+  "name": "synthetic300",
+  "nodes": 300,
+  "physical_links": 669,
+  "traffic_matrix_entries": 90000,
+  "traffic_matrix_source": "deterministic gravity fixture"
+}

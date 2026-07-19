@@ -1,0 +1,14 @@
+logs/
+*.log
+*.pid
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.uv-cache/
+.uv-python/
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+models/*/gart.pt

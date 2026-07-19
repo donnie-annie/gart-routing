@@ -1,0 +1,28 @@
+{
+  "benchmark_role": "medium real-world topology",
+  "bundled_traffic_matrix": {
+    "model": "deterministic gravity fixture",
+    "note": "Deterministic runnable traffic fixture.",
+    "seed": 2
+  },
+  "directed_links": 72,
+  "expected_counts": {
+    "directed_links": 72,
+    "nodes": 23
+  },
+  "measurement_snapshot_reference": "https://github.com/GuetYe/DRL-M4MR/blob/77a3924832c0c4075aa3428883a27ea4b1d5eab5/mininet/topologies/topology-anonymised.xml",
+  "name": "geant2",
+  "nodes": 23,
+  "normalization": {
+    "excluded_edge": [
+      6,
+      19
+    ],
+    "reason": "The lowest-capacity non-bridge edge is omitted for a stable 36-link fixture.",
+    "source_physical_links": 37
+  },
+  "physical_links": 36,
+  "topology_source": "https://knowledgedefinednetworking.org/data/datasets_v0/geant2.tar.gz",
+  "traffic_matrix_entries": 529,
+  "traffic_matrix_source": "deterministic gravity fixture"
+}

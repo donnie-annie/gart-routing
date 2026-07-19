@@ -1,0 +1,11 @@
+# Python runtime dependencies for the standalone GART Routing Suite.
+# Mininet and Open vSwitch are system packages and should be installed by apt.
+flask==1.1.2
+flask-cors==3.0.10
+networkx==2.4
+numpy==1.21.0
+gym==0.21.0
+ryu==4.34
+# GART model dependencies.
+torch==1.13.1
+torch-geometric==2.2.0

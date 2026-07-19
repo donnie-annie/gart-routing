@@ -1,0 +1,20 @@
+{
+  "benchmark_role": "small real-world topology",
+  "bundled_traffic_matrix": {
+    "model": "deterministic gravity fixture",
+    "note": "Deterministic runnable traffic fixture.",
+    "seed": 1
+  },
+  "directed_links": 42,
+  "edge_list_reference": "https://github.com/knowledgedefinednetworking/DRL-GNN/commit/e3bc32bc6b65c1b6df570aee23bfe304fc4ebe0a",
+  "expected_counts": {
+    "directed_links": 42,
+    "nodes": 14
+  },
+  "name": "nsfnet",
+  "nodes": 14,
+  "physical_links": 21,
+  "topology_source": "https://knowledgedefinednetworking.org/data/datasets_v0/nsfnet.tar.gz",
+  "traffic_matrix_entries": 196,
+  "traffic_matrix_source": "deterministic gravity fixture"
+}
