@@ -91,7 +91,7 @@ def _mlp(input_dim, hidden_dims, output_dim):
 
 
 class GARTActorCritic(nn.Module):
-    """Decentralized next-hop Actor with a training-only state-value Critic."""
+    """One node-resident GAT, Actor, and training-only Critic."""
 
     algorithm = "GART"
 
@@ -156,6 +156,7 @@ class GARTActorCritic(nn.Module):
     def checkpoint(self, optimizer=None, extra=None):
         payload = {
             "algorithm": self.algorithm,
+            "architecture": "single_agent",
             "config": self.config.to_dict(),
             "model_state_dict": self.state_dict(),
         }
@@ -171,5 +172,113 @@ class GARTActorCritic(nn.Module):
             checkpoint = torch.load(checkpoint, map_location=map_location)
         config = GARTConfig.from_dict(checkpoint.get("config", {}))
         model = cls(config)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        return model
+
+
+class GARTMultiAgentActorCritic(nn.Module):
+    """Independent node-resident models trained through one PPO objective."""
+
+    algorithm = "GART"
+    architecture = "independent_per_node"
+    independent_agents = True
+
+    def __init__(self, config, node_ids):
+        super().__init__()
+        self.config = config or GARTConfig()
+        self.node_ids = tuple(sorted({int(node_id) for node_id in node_ids}))
+        if not self.node_ids:
+            raise ValueError("GART requires at least one node agent")
+        self.agents = nn.ModuleDict({
+            str(node_id): GARTActorCritic(self.config)
+            for node_id in self.node_ids
+        })
+
+    @staticmethod
+    def _scalar_agent_id(agent_id):
+        if torch.is_tensor(agent_id):
+            if agent_id.numel() != 1:
+                raise ValueError("a scalar agent ID is required")
+            agent_id = agent_id.item()
+        return int(agent_id)
+
+    def agent(self, agent_id):
+        agent_id = self._scalar_agent_id(agent_id)
+        key = str(agent_id)
+        if key not in self.agents:
+            raise KeyError("no GART agent for node %s" % agent_id)
+        return self.agents[key]
+
+    def forward(self, agent_id, node_features, adjacency, current_node,
+                flow_features):
+        return self.agent(agent_id).forward(
+            node_features, adjacency, current_node, flow_features)
+
+    def act(self, agent_id, node_features, adjacency, current_node,
+            flow_features, action_mask, deterministic=False):
+        return self.agent(agent_id).act(
+            node_features,
+            adjacency,
+            current_node,
+            flow_features,
+            action_mask,
+            deterministic=deterministic,
+        )
+
+    def evaluate_actions(self, agent_ids, node_features, adjacency,
+                         current_node, flow_features, action_mask, actions):
+        agent_ids = torch.as_tensor(
+            agent_ids, dtype=torch.long, device=current_node.device).reshape(-1)
+        if agent_ids.numel() != node_features.size(0):
+            raise ValueError("agent ID count must match the batch size")
+
+        grouped_indices = []
+        grouped_values = []
+        grouped_log_probabilities = []
+        grouped_entropies = []
+        for agent_id in torch.unique(agent_ids, sorted=True).tolist():
+            indices = torch.nonzero(
+                agent_ids == int(agent_id), as_tuple=False).flatten()
+            value, log_probability, entropy = self.agent(agent_id).evaluate_actions(
+                node_features[indices],
+                adjacency[indices],
+                current_node[indices],
+                flow_features[indices],
+                action_mask[indices],
+                actions[indices],
+            )
+            grouped_indices.append(indices)
+            grouped_values.append(value)
+            grouped_log_probabilities.append(log_probability)
+            grouped_entropies.append(entropy)
+
+        concatenated_indices = torch.cat(grouped_indices)
+        restore_order = torch.argsort(concatenated_indices)
+        return (
+            torch.cat(grouped_values, dim=0)[restore_order],
+            torch.cat(grouped_log_probabilities, dim=0)[restore_order],
+            torch.cat(grouped_entropies, dim=0)[restore_order],
+        )
+
+    def checkpoint(self, optimizer=None, extra=None):
+        payload = {
+            "algorithm": self.algorithm,
+            "architecture": self.architecture,
+            "agent_node_ids": list(self.node_ids),
+            "config": self.config.to_dict(),
+            "model_state_dict": self.state_dict(),
+        }
+        if optimizer is not None:
+            payload["optimizer_state_dict"] = optimizer.state_dict()
+        if extra:
+            payload["extra"] = dict(extra)
+        return payload
+
+    @classmethod
+    def from_checkpoint(cls, checkpoint, map_location="cpu"):
+        if isinstance(checkpoint, str):
+            checkpoint = torch.load(checkpoint, map_location=map_location)
+        config = GARTConfig.from_dict(checkpoint.get("config", {}))
+        model = cls(config, checkpoint.get("agent_node_ids", ()))
         model.load_state_dict(checkpoint["model_state_dict"])
         return model

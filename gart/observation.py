@@ -80,10 +80,13 @@ class GARTTopologyIndex:
     def __init__(self, topo_edges):
         self._outgoing = {}
         self.node_ids = set()
+        self.maximum_capacity = 1.0
         for raw_edge in topo_edges or []:
             edge = normalize_edge(raw_edge)
             self.node_ids.update((edge["src"], edge["dst"]))
             self._outgoing.setdefault(edge["src"], []).append(raw_edge)
+            self.maximum_capacity = max(
+                self.maximum_capacity, edge["capacity"])
 
     def _normalized_outgoing(self, node_id):
         return [
@@ -139,7 +142,8 @@ class GARTObservation:
 
 
 def build_gart_observation(topo_edges, current_node, destination_node,
-                           visited_nodes=None, deadline_ms=200.0,
+                           visited_nodes=None, traffic_demand=0.0,
+                           deadline_ms=200.0,
                            max_deadline_ms=200.0, neighborhood_hops=2):
     """Create capacity/delay/loss node features and a valid-next-hop mask.
 
@@ -215,6 +219,10 @@ def build_gart_observation(topo_edges, current_node, destination_node,
     destination_index = global_node_ids.index(destination_node)
     destination_feature = destination_index / float(
         max(len(global_node_ids) - 1, 1))
+    demand_feature = max(0.0, min(
+        _finite(traffic_demand) / max(topology.maximum_capacity, 1e-12),
+        1.0,
+    ))
     deadline_feature = max(0.0, min(_finite(deadline_ms) / max(_finite(max_deadline_ms, 200.0), 1e-12), 1.0))
 
     return GARTObservation(
@@ -222,7 +230,7 @@ def build_gart_observation(topo_edges, current_node, destination_node,
         node_features=node_features,
         adjacency=adjacency,
         action_mask=action_mask,
-        flow_features=[destination_feature, deadline_feature],
+        flow_features=[destination_feature, demand_feature, deadline_feature],
         current_index=index[int(current_node)],
         destination_index=destination_index,
     )

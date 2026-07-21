@@ -16,7 +16,7 @@ class GARTConfig:
     """Model, PPO, and dual-reward settings."""
 
     node_feature_dim: int = 3  # capacity, delay, loss
-    flow_feature_dim: int = 2  # normalized destination, deadline
+    flow_feature_dim: int = 3  # normalized destination, demand, deadline
 
     gat_layers: int = 2
     attention_heads: int = 4

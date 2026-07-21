@@ -44,6 +44,7 @@ def _resolve_service_path(path, topo_name="nsfnet"):
     return os.path.join(PROJECT_ROOT, path)
 
 GARTActorCritic = None
+GARTMultiAgentActorCritic = None
 GARTConfig = None
 GARTTopologyIndex = None
 build_gart_observation = None
@@ -52,7 +53,10 @@ load_topology_edges = None
 if torch is not None:
     try:
         from gart.config import GARTConfig                 # noqa: E402
-        from gart.model import GARTActorCritic             # noqa: E402
+        from gart.model import (                           # noqa: E402
+            GARTActorCritic,
+            GARTMultiAgentActorCritic,
+        )
         from gart.observation import (                     # noqa: E402
             GARTTopologyIndex,
             build_gart_observation,
@@ -206,7 +210,11 @@ class GARTPathService(object):
         else:
             try:
                 checkpoint = torch.load(gart_checkpoint, map_location="cpu")
-                self.gart_model = GARTActorCritic.from_checkpoint(checkpoint)
+                if checkpoint.get("architecture") == "independent_per_node":
+                    self.gart_model = GARTMultiAgentActorCritic.from_checkpoint(
+                        checkpoint)
+                else:
+                    self.gart_model = GARTActorCritic.from_checkpoint(checkpoint)
                 self.gart_model.to(self.device)
                 self.gart_model.eval()
                 print("[模型] GART 模型已加载: %s" % gart_checkpoint)
@@ -236,7 +244,7 @@ class GARTPathService(object):
         return path
 
     def compute_path_with_gart(self, src_node, dst_node, topo_edges,
-                               deadline_ms=200.0):
+                               deadline_ms=200.0, traffic_demand=0.0):
         """Execute Algorithm 1 as decentralized per-hop next-hop decisions."""
         self._last_model_action_used = False
         self._last_model_confidence = None
@@ -267,19 +275,33 @@ class GARTPathService(object):
                     current_node=current,
                     destination_node=dst_node,
                     visited_nodes=path,
+                    traffic_demand=traffic_demand,
                     deadline_ms=deadline_ms,
                     max_deadline_ms=self.gart_model.config.max_deadline_ms,
                     neighborhood_hops=self.gart_model.config.gat_layers,
                 )
                 tensors = observation.to_tensors(self.device)
+                flow_features = tensors["flow_features"]
+                feature_dim = int(self.gart_model.config.flow_feature_dim)
+                if feature_dim == 2 and flow_features.size(1) >= 3:
+                    flow_features = flow_features[:, [0, 2]]
+                else:
+                    flow_features = flow_features[:, :feature_dim]
                 with torch.no_grad():
-                    _value, action, _log_probability, probabilities = self.gart_model.act(
+                    model_args = (
                         tensors["node_features"],
                         tensors["adjacency"],
                         tensors["current_node"],
-                        tensors["flow_features"],
+                        flow_features,
                         tensors["action_mask"],
-                        deterministic=True,
+                    )
+                    if getattr(self.gart_model, "independent_agents", False):
+                        model_args = (current,) + model_args
+                    _value, action, _log_probability, probabilities = (
+                        self.gart_model.act(
+                            *model_args,
+                            deterministic=True,
+                        )
                     )
                 action_index = int(action.item())
                 next_node = observation.node_ids[action_index]
@@ -307,10 +329,16 @@ class GARTPathService(object):
         flow = flow or {}
         edges = topo_edges or self._static_topology_edges
         deadline_ms = float(flow.get("deadline_ms", 200.0))
+        traffic_demand = float(flow.get("demand", 0.0))
 
         if self.gart_model is not None:
             path = self.compute_path_with_gart(
-                src_node, dst_node, edges, deadline_ms=deadline_ms)
+                src_node,
+                dst_node,
+                edges,
+                deadline_ms=deadline_ms,
+                traffic_demand=traffic_demand,
+            )
             if path:
                 print("[路径] GART 计算: %d -> %d = %s"
                       % (src_node, dst_node, path))

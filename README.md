@@ -34,6 +34,8 @@ Each routing decision builds the current agent's two-hop induced subgraph,
 which matches the configured two-layer GAT receptive field.
 Remote destinations remain flow features and are not inserted into the local
 GAT graph. PPO pads variable local graphs only within each rollout batch.
+Each node maintains independent GAT, Actor, and Critic parameters, while PPO
+jointly optimizes the agents that contributed transitions to the rollout.
 
 ## Install
 
