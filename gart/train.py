@@ -13,7 +13,7 @@ import random
 import torch
 
 from .config import GARTConfig
-from .model import GARTActorCritic
+from .model import GARTMultiAgentActorCritic
 from .ppo import GARTPPO
 from .rewards import DualRewardConfig
 from .rollout import GARTRolloutBuffer
@@ -61,7 +61,7 @@ def train(args):
         reward_config=reward_config,
         neighborhood_hops=config.gat_layers,
     )
-    model = GARTActorCritic(config).to(device)
+    model = GARTMultiAgentActorCritic(config, environment.node_ids).to(device)
     trainer = GARTPPO(model, config)
 
     if args.resume:
@@ -80,8 +80,10 @@ def train(args):
 
     for interaction in range(1, args.interactions + 1):
         tensors = observation.to_tensors(device)
+        agent_id = observation.node_ids[observation.current_index]
         with torch.no_grad():
             value, action, log_probability, _ = model.act(
+                agent_id,
                 tensors["node_features"],
                 tensors["adjacency"],
                 tensors["current_node"],
@@ -90,7 +92,15 @@ def train(args):
             )
         next_node = observation.node_ids[int(action.item())]
         next_observation, reward, done, info = environment.step(next_node)
-        rollout.add(tensors, action, log_probability, value, reward, done)
+        rollout.add(
+            tensors,
+            action,
+            log_probability,
+            value,
+            reward,
+            done,
+            agent_id=agent_id,
+        )
         last_done = done
         observation = environment.reset() if done else next_observation
 
@@ -99,8 +109,10 @@ def train(args):
                 last_value = 0.0
             else:
                 next_tensors = observation.to_tensors(device)
+                next_agent_id = observation.node_ids[observation.current_index]
                 with torch.no_grad():
                     last_value = model.forward(
+                        next_agent_id,
                         next_tensors["node_features"],
                         next_tensors["adjacency"],
                         next_tensors["current_node"],

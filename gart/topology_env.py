@@ -62,7 +62,7 @@ class TopologyRoutingEnv:
         return pairs
 
     def _sample_flow(self):
-        src, dst, _ = self.random.choices(
+        src, dst, demand = self.random.choices(
             self.traffic_pairs,
             weights=[item[2] for item in self.traffic_pairs],
             k=1,
@@ -73,8 +73,7 @@ class TopologyRoutingEnv:
             weights=[FLOW_PROFILES[label]["proportion"] for label in labels],
             k=1,
         )[0]
-        demand_by_type = {"EU": 100.0, "MU": 1500.0, "LU": 500.0, "RT": 1500.0}
-        return src, dst, flow_type, demand_by_type[flow_type]
+        return src, dst, flow_type, float(demand)
 
     def _reset_link_state(self):
         self.edges = copy.deepcopy(self.base_edges)
@@ -107,6 +106,7 @@ class TopologyRoutingEnv:
             current_node=self.current,
             destination_node=self.destination,
             visited_nodes=self.visited,
+            traffic_demand=self.required_throughput,
             deadline_ms=self.deadline_ms,
             neighborhood_hops=self.neighborhood_hops,
         )

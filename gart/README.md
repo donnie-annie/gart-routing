@@ -12,7 +12,7 @@ This package contains the trainable GART policy and its online next-hop service.
 | Deadline/throughput/loss global reward | `rewards.py::DualReward.global_reward` |
 | Terminal dual reward | `rewards.py::DualReward.combined` |
 | Multi-head GAT | `model.py::MultiHeadGATLayer` |
-| Flow-conditioned Actor-Critic | `model.py::GARTActorCritic` |
+| Per-node GAT/Actor/Critic models | `model.py::GARTMultiAgentActorCritic` |
 | GAE and rollout | `rollout.py` |
 | PPO loss | `ppo.py` |
 | Multi-flow training loop | `train.py` |
@@ -25,7 +25,9 @@ and variable neighborhood sizes are padded only to the largest local graph in
 each PPO rollout.  Each GAT layer has four attention heads with a 16-dimensional
 output per head. Actor and Critic MLPs both use hidden widths 64/64. Embeddings
 are L2-normalized after every GAT layer, and invalid or already-visited next
-hops are masked before sampling.
+hops are masked before sampling. Every network node owns independent GAT,
+Actor, and Critic parameters. The policy and value inputs include normalized
+destination, traffic demand, and deadline features.
 
 The global reward is attached only to the terminal transition. GAE propagates
 its effect to earlier per-hop decisions.

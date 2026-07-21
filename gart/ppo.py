@@ -23,14 +23,25 @@ class GARTPPO:
             order = torch.randperm(sample_count, device=device)
             for start in range(0, sample_count, self.config.mini_batch_size):
                 indices = order[start:start + self.config.mini_batch_size]
-                value, log_probability, entropy = self.model.evaluate_actions(
-                    data["node_features"][indices],
-                    data["adjacency"][indices],
-                    data["current_node"][indices],
-                    data["flow_features"][indices],
-                    data["action_mask"][indices],
-                    data["actions"][indices],
-                )
+                if getattr(self.model, "independent_agents", False):
+                    value, log_probability, entropy = self.model.evaluate_actions(
+                        data["agent_ids"][indices],
+                        data["node_features"][indices],
+                        data["adjacency"][indices],
+                        data["current_node"][indices],
+                        data["flow_features"][indices],
+                        data["action_mask"][indices],
+                        data["actions"][indices],
+                    )
+                else:
+                    value, log_probability, entropy = self.model.evaluate_actions(
+                        data["node_features"][indices],
+                        data["adjacency"][indices],
+                        data["current_node"][indices],
+                        data["flow_features"][indices],
+                        data["action_mask"][indices],
+                        data["actions"][indices],
+                    )
                 value = value.squeeze(-1)
                 ratio = torch.exp(log_probability - data["old_log_probabilities"][indices])
                 objective = ratio * advantages[indices]

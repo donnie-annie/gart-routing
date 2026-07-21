@@ -16,6 +16,7 @@ class GARTRolloutBuffer:
         self.node_features = []
         self.adjacencies = []
         self.current_nodes = []
+        self.agent_ids = []
         self.flow_features = []
         self.action_masks = []
         self.actions = []
@@ -38,12 +39,13 @@ class GARTRolloutBuffer:
         return value.detach().cpu()
 
     def add(self, observation_tensors, action, log_probability, value,
-            reward, done):
+            reward, done, agent_id=0):
         if self.full:
             raise RuntimeError("GART rollout is already full")
         self.node_features.append(self._cpu(observation_tensors["node_features"].squeeze(0)))
         self.adjacencies.append(self._cpu(observation_tensors["adjacency"].squeeze(0)))
         self.current_nodes.append(self._cpu(observation_tensors["current_node"].squeeze(0)))
+        self.agent_ids.append(int(agent_id))
         self.flow_features.append(self._cpu(observation_tensors["flow_features"].squeeze(0)))
         self.action_masks.append(self._cpu(observation_tensors["action_mask"].squeeze(0)))
         self.actions.append(self._cpu(action.reshape(())))
@@ -115,6 +117,8 @@ class GARTRolloutBuffer:
                 pad_adjacency(item) for item in self.adjacencies
             ]).to(device),
             "current_node": torch.stack(self.current_nodes).long().to(device),
+            "agent_ids": torch.tensor(
+                self.agent_ids, dtype=torch.long, device=device),
             "flow_features": torch.stack(self.flow_features).to(device),
             "action_mask": torch.stack([
                 pad_action_mask(item) for item in self.action_masks

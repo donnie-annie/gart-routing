@@ -31,6 +31,7 @@ class GARTDefaultsTests(unittest.TestCase):
         self.assertEqual(config.attention_heads, 4)
         self.assertEqual(config.embedding_dim_per_head, 16)
         self.assertEqual(config.embedding_dim, 64)
+        self.assertEqual(config.flow_feature_dim, 3)
         self.assertEqual(config.actor_hidden, (64, 64))
         self.assertEqual(config.critic_hidden, (64, 64))
         self.assertEqual(config.learning_rate, 1e-5)
@@ -79,12 +80,14 @@ class GARTDefaultsTests(unittest.TestCase):
             current_node=1,
             destination_node=3,
             visited_nodes=[1],
+            traffic_demand=25,
             deadline_ms=50,
         )
         self.assertEqual(observation.node_ids, [1, 2, 3])
         self.assertEqual(observation.action_mask, [False, True, False])
         self.assertAlmostEqual(observation.node_features[0][0], 0.8)
         self.assertAlmostEqual(observation.flow_features[1], 0.25)
+        self.assertAlmostEqual(observation.flow_features[2], 0.25)
         self.assertTrue(all(
             observation.adjacency[index][index]
             for index in range(len(observation.node_ids))))
